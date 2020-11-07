@@ -40,21 +40,33 @@ class Router
         throw new Exception($path . ' dont exists. PLease check');
     }
 
+    /**
+     *  Its return controller name  action name  and params
+     * @param String $internalRoute
+     * @return array
+     */
+    private function parseSegments(String $internalRoute) {
+        $segments = explode('/', $internalRoute);
+        $controllerName = ucfirst(array_shift($segments)) . 'Controller';
+        $action = 'action' . ucfirst(array_shift($segments));
+        return [$controllerName, $action, $segments];
+    }
+
     public function run() {
 
         $uri = $this->getUri();
 
         foreach ($this->routes as $url => $path) {
             if(preg_match("~{$url}~", $uri)) {
+                // replace for $1 $2 routes
+                $internalRoute = preg_replace("~{$url}~", $path, $uri);
 
-                $segments = explode('/', $path);
-                $controllerName = ucfirst(array_shift($segments)) . 'Controller';
-                $action = 'action' . ucfirst(array_shift($segments));
+                list($controllerName, $action, $params) = $this->parseSegments($internalRoute);
 
                 include_once($this->getControllerClassFile($controllerName));
 
                 $controllerObject = new $controllerName;
-                $result = $controllerObject->{$action}();
+                $result = call_user_func_array([$controllerObject, $action], $params);
 
                 if(!is_null($result)) {
                     break;
